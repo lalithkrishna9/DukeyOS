@@ -1,0 +1,14 @@
+[Unit]
+After=dukeyos-messagebus.service
+After=docker.service
+Description=DukeyOS App Management Service
+
+[Service]
+ExecStartPre=/usr/bin/dukeyos-appmanagement -v
+ExecStart=/usr/bin/dukeyos-appmanagement -c /etc/dukeyos/app-management.conf
+PIDFile=/var/run/dukeyos/app-management.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

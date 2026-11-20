@@ -1,0 +1,185 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: dukeyos-messagebus
+before:
+  hooks:
+    - go generate
+    - go run github.com/google/go-licenses@latest check . --disallowed_types=restricted
+    - go mod tidy
+    - go test -race -v ./...
+builds:
+  - id: dukeyos-messagebus-amd64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-messagebus-arm64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-messagebus-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-messagebus
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-messagebus-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+  - id: dukeyos-messagebus-migration-tool-amd64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-messagebus-migration-tool-arm64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-messagebus-migration-tool-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-messagebus-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-messagebus-migration-tool-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-messagebus-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+archives:
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-v{{ .Version }}
+    id: dukeyos-messagebus
+    builds:
+      - dukeyos-messagebus-amd64
+      - dukeyos-messagebus-arm64
+      - dukeyos-messagebus-arm-7
+      - dukeyos-messagebus-riscv64
+    files:
+      - build/**/*
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-migration-tool-v{{ .Version }}
+    id: dukeyos-messagebus-migration-tool
+    builds:
+      - dukeyos-messagebus-migration-tool-amd64
+      - dukeyos-messagebus-migration-tool-arm64
+      - dukeyos-messagebus-migration-tool-arm-7
+      - dukeyos-messagebus-migration-tool-riscv64
+    files:
+      - build/sysroot/etc/**/*
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  github:
+    owner: IceWhaleTech
+    name: DukeyOS-MessageBus
+  draft: true
+  prerelease: auto
+  mode: replace
+  name_template: "v{{ .Version }}"

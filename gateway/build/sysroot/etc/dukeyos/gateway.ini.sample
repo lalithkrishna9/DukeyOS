@@ -1,0 +1,6 @@
+[common]
+runtimepath=/var/run/dukeyos
+
+[gateway]
+port=
+bind=127.0.0.1

@@ -1,0 +1,12 @@
+[Unit]
+After=dukeyos-messagebus.service
+Description=DukeyOS Main Service
+
+[Service]
+ExecStart=/usr/bin/dukeyos-core -c /etc/dukeyos/dukeyos.conf
+PIDFile=/var/run/dukeyos/dukeyos.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

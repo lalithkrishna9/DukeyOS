@@ -1,0 +1,20 @@
+[app]
+PAGE_SIZE = 10
+RuntimeRootPath = runtime/
+LogPath = /var/log/dukeyos/
+LogSaveName = log
+LogFileExt = log
+DateStrFormat = 20060102
+DateTimeFormat = 2006-01-02 15:04:05
+TimeFormat = 15:04:05
+DateFormat = 2006-01-02
+DBPath     = /var/lib/dukeyos
+ShellPath  = /usr/share/dukeyos/shell
+UserDataPath = /var/lib/dukeyos/conf
+
+[server]
+RunMode = release
+Token = 
+USBAutoMount =
+
+[system]

@@ -1,0 +1,194 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: dukeyos
+before:
+  hooks:
+    - go generate
+    - go run github.com/google/go-licenses@latest check . --disallowed_types=restricted
+    - go mod tidy
+    - go test -race -v ./...
+
+builds:
+  - id: dukeyos-amd64
+    binary: build/sysroot/usr/bin/dukeyos
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-arm64
+    binary: build/sysroot/usr/bin/dukeyos
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-arm-7
+    binary: build/sysroot/usr/bin/dukeyos
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-riscv64
+    binary: build/sysroot/usr/bin/dukeyos
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+  - id: dukeyos-migration-tool-amd64
+    binary: build/sysroot/usr/bin/dukeyos-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-migration-tool-arm64
+    binary: build/sysroot/usr/bin/dukeyos-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-migration-tool-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-migration-tool-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+archives:
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-v{{ .Version }}
+    id: dukeyos
+    builds:
+      - dukeyos-amd64
+      - dukeyos-arm64
+      - dukeyos-arm-7
+      - dukeyos-riscv64
+    files:
+      - build/**/*
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-migration-tool-v{{ .Version }}
+    id: dukeyos-migration-tool
+    builds:
+      - dukeyos-migration-tool-amd64
+      - dukeyos-migration-tool-arm64
+      - dukeyos-migration-tool-arm-7
+      - dukeyos-migration-tool-riscv64
+    files:
+      - build/sysroot/etc/**/*
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+# release:
+#   github:
+#     owner: IceWhaleTech
+#     name: DukeyOS
+#   draft: true
+#   prerelease: auto
+#   mode: replace
+#   name_template: "v{{ .Version }}"
+release:
+  github:
+    owner: IceWhaleTech
+    name: DukeyOS
+  draft: true
+  prerelease: auto
+  mode: replace
+  name_template: "v{{ .Version }}"

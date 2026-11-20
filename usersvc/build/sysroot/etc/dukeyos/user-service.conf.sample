@@ -1,0 +1,9 @@
+[common]
+RuntimePath=/var/run/dukeyos
+
+[app]
+LogPath = /var/log/dukeyos
+LogSaveName = user-service
+LogFileExt = log
+DBPath     = /var/lib/dukeyos/db
+UserDataPath = /var/lib/dukeyos

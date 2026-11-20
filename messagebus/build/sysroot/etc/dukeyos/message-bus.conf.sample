@@ -1,0 +1,7 @@
+[common]
+RuntimePath=/var/run/dukeyos
+
+[app]
+LogPath=/var/log/dukeyos
+LogSaveName=message-bus
+LogFileExt=log

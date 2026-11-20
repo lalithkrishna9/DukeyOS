@@ -1,0 +1,8 @@
+DukeyOS includes code forked from the CasaOS project family by IceWhale Technology
+(CasaOS, CasaOS-Gateway, CasaOS-UserService, CasaOS-AppManagement, CasaOS-LocalStorage,
+CasaOS-MessageBus, CasaOS-Common), licensed under the Apache License 2.0 (see core/LICENSE).
+Files were modified and rebranded. Original copyright headers are retained in source files.
+
+The dashboard globe uses encom-globe.js and grid.json from eDEX-UI (GPL-3.0, GNU General
+Public License v3) and encom-globe by Rob Scanlon. Keep this in mind if DukeyOS is ever
+distributed: the combined work would then need to be GPL-3.0 compatible.

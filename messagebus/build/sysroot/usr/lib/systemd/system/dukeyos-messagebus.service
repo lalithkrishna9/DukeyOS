@@ -1,0 +1,13 @@
+[Unit]
+After=dukeyos-gateway.service
+Description=DukeyOS Message Bus Service
+
+[Service]
+ExecStartPre=/usr/bin/dukeyos-messagebus -v
+ExecStart=/usr/bin/dukeyos-messagebus -c /etc/dukeyos/message-bus.conf
+PIDFile=/var/run/dukeyos/message-bus.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

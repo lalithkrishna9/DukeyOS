@@ -1,0 +1,13 @@
+[Unit]
+After=dukeyos-messagebus.service
+Description=DukeyOS User Service
+
+[Service]
+ExecStartPre=/usr/bin/dukeyos-usersvc -v
+ExecStart=/usr/bin/dukeyos-usersvc -c /etc/dukeyos/user-service.conf
+PIDFile=/var/run/dukeyos/user-service.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+After=dukeyos-gateway.service
+After=dukeyos-messagebus.service
+Description=DukeyOS Local Storage Service
+
+[Service]
+ExecStartPre=/usr/bin/dukeyos-localstorage -v
+ExecStart=/usr/bin/dukeyos-localstorage -c /etc/dukeyos/local-storage.conf
+PIDFile=/var/run/dukeyos/local-storage.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

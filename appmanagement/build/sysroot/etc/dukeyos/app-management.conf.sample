@@ -1,0 +1,13 @@
+[common]
+RuntimePath = /var/run/dukeyos
+
+[app]
+LogPath = /var/log/dukeyos/
+LogSaveName = app-management
+LogFileExt = log
+AppStorePath = /var/lib/dukeyos/appstore
+AppsPath = /var/lib/dukeyos/apps
+
+[server]
+appstore = https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@gh-pages/store/main.zip
+appstore = https://github.com/bigbeartechworld/big-bear-casaos/archive/refs/heads/master.zip

@@ -1,0 +1,184 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: dukeyos-localstorage
+before:
+  hooks:
+    - go generate
+    - go mod tidy
+    - go test -race -v ./...
+builds:
+  - id: dukeyos-localstorage-amd64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-localstorage-arm64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-localstorage-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-localstorage
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-localstorage-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+  - id: dukeyos-localstorage-migration-tool-amd64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-localstorage-migration-tool-arm64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-localstorage-migration-tool-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-localstorage-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-localstorage-migration-tool-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-localstorage-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+archives:
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-v{{ .Version }}
+    id: dukeyos-localstorage
+    builds:
+      - dukeyos-localstorage-amd64
+      - dukeyos-localstorage-arm64
+      - dukeyos-localstorage-arm-7
+      - dukeyos-localstorage-riscv64
+    files:
+      - build/**/*
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-migration-tool-v{{ .Version }}
+    id: dukeyos-localstorage-migration-tool
+    builds:
+      - dukeyos-localstorage-migration-tool-amd64
+      - dukeyos-localstorage-migration-tool-arm64
+      - dukeyos-localstorage-migration-tool-arm-7
+      - dukeyos-localstorage-migration-tool-riscv64
+    files:
+      - build/sysroot/etc/**/*
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  github:
+    owner: IceWhaleTech
+    name: DukeyOS-LocalStorage
+  draft: true
+  prerelease: auto
+  mode: replace
+  name_template: "v{{ .Version }}"

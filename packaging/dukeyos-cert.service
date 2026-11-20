@@ -1,0 +1,7 @@
+[Unit]
+Description=DukeyOS dashboard certificate renewal
+After=network-online.target tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'if [ "$(/opt/dukeyos/dukeyos-cert.sh)" = changed ]; then systemctl try-restart dukeyos-dashboard.service; fi'

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>DUKEYOS</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<div id="flash"></div><div id="vig"></div><div id="scan"></div><div id="tube"></div><div id="sweep"></div>
+
+<!-- SCREEN 1: BOOT -->
+<section id="boot" class="screen red active">
+  <div id="log"></div>
+  <h1 id="title" class="glow">DUKEYOS</h1>
+  <div id="gate" class="glow">[ PRESS ANY KEY OR TAP TO POWER ON ]</div>
+</section>
+
+<!-- SCREEN 2: LOGIN -->
+<section id="login" class="screen red">
+  <h2 id="welcome" class="glow"></h2>
+  <div id="pwwrap"><div id="pulse"></div>
+    <input id="pw" type="password" autocomplete="current-password" spellcheck="false" aria-label="password" maxlength="256">
+    <span id="dots"></span><span id="caret">█</span></div>
+  <div id="msg" class="glow" aria-live="polite"></div>
+  <div id="hint"></div>
+</section>
+
+<!-- SCREEN 3: HOME -->
+<section id="home" class="screen white">
+  <header class="bar">
+    <div class="brand">DUKEYOS</div>
+    <div class="meta"><span id="clock">--:--:--</span><span id="uptime">UP --</span><span id="host">HOST --</span><span id="temp">CPU --°C</span></div>
+    <button id="chpw" title="Change password">PASSWORD</button><button id="logout" title="Sign out">LOCK</button>
+    <div class="cam panel" id="camBox"><img id="cam" alt=""><b id="camOff">OFFLINE</b></div>
+  </header>
+  <aside class="panel" id="sys"><h3>SYSTEM <i id="load"></i></h3>
+    <div class="lbl">CPU <i id="cpuv"></i></div><canvas id="cpuc"></canvas>
+    <div class="lbl">RAM <i id="ramv"></i></div><canvas id="ramc"></canvas>
+    <div class="lbl">DISK /DATA <i id="diskv"></i></div><div class="bar2"><div id="diskb"></div></div>
+    <div class="lbl">PROCESSES <i>CPU · MEM</i></div><table id="procs"></table></aside>
+  <main class="panel" id="center"><h3>WORLD VIEW <i>HYDERABAD · 17.38N 78.48E</i></h3><div id="globe"></div></main>
+  <aside id="netcol">
+    <div class="panel"><h3>NETWORK STATUS</h3><div id="ns">--</div></div>
+    <div class="panel"><h3>NETWORK TRAFFIC <i id="traf"></i></h3><canvas id="netc"></canvas></div>
+    <div class="panel grow"><h3>PACKETS <i id="pstat">…</i>
+      <button id="ppause">PAUSE</button><input id="pfilter" placeholder="filter" spellcheck="false" aria-label="packet filter"></h3>
+      <div id="ptable"><div class="off" id="poff"><span>OFFLINE</span><small id="preason"></small></div>
+        <table id="pk"><thead><tr><th>No.</th><th>Time</th><th>Src → Dst</th><th>Proto</th><th>Len</th><th>Info</th></tr></thead><tbody></tbody></table></div></div>
+  </aside>
+  <footer class="panel" id="apps"><h3>APPS <button id="store">+ APP STORE</button></h3><div id="grid"></div></footer>
+</section>
+
+<div id="modal" class="modal"><div class="panel"><h3>APP STORE <input id="ssearch" placeholder="search" spellcheck="false" aria-label="search apps"><button id="mx">CLOSE</button></h3><div id="sgrid"></div></div></div>
+<div id="pwmodal" class="modal"><div class="panel narrow"><h3>CHANGE PASSWORD <button id="pwx">CLOSE</button></h3>
+  <input id="pwcur" type="password" placeholder="current password" autocomplete="current-password" aria-label="current password">
+  <input id="pwnew" type="password" placeholder="new password (10+ chars)" autocomplete="new-password" aria-label="new password">
+  <div class="row"><button id="pwsave">SAVE</button><span id="pwmsg"></span></div></div></div>
+<div id="menu"></div>
+<div id="toast"></div>
+
+<script src="assets/encom-globe.js"></script>
+<script src="app.js"></script>
+</body></html>

@@ -1,0 +1,34 @@
+[Unit]
+Description=DukeyOS Dashboard
+After=network-online.target tailscaled.service dukeyos-gateway.service dukeyos-appmanagement.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=dukeyos
+Group=dukeyos
+SupplementaryGroups=video
+EnvironmentFile=/etc/dukeyos/dashboard.env
+WorkingDirectory=/opt/dukeyos/dashboard/backend
+# ONE worker, many threads (sessions, camera and tshark live in-process). No --preload: threads would not survive the fork.
+ExecStart=/opt/dukeyos/venv/bin/gunicorn --chdir /opt/dukeyos/dashboard/backend -c /opt/dukeyos/dashboard/backend/gunicorn.conf.py app:app
+Restart=always
+RestartSec=3
+# Non-root packet capture: tshark's dumpcap inherits these ambient capabilities.
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_PACKET AF_NETLINK
+ReadWritePaths=/var/lib/dukeyos/dashboard
+
+[Install]
+WantedBy=multi-user.target

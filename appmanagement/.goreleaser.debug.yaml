@@ -1,0 +1,217 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: dukeyos-appmanagement
+before:
+  hooks:
+    - go generate
+    - go run github.com/google/go-licenses@latest check . --disallowed_types=restricted
+    - go mod tidy
+    - go test -race -v ./... -timeout 30m
+builds:
+  - id: dukeyos-appmanagement-amd64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+    hooks:
+      post:
+        - cmd: go build -v -tags 'musl netgo osusergo' -o build/sysroot/usr/bin/appfile2compose dukeyos.local/appmanagement/cmd/appfile2compose
+          output: true
+  - id: dukeyos-appmanagement-arm64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+    hooks:
+      post:
+        - cmd: go build -v -tags 'musl netgo osusergo' -o build/sysroot/usr/bin/appfile2compose dukeyos.local/appmanagement/cmd/appfile2compose
+          output: true
+  - id: dukeyos-appmanagement-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+    hooks:
+      post:
+        - cmd: go build -v -tags 'musl netgo osusergo' -o build/sysroot/usr/bin/appfile2compose dukeyos.local/appmanagement/cmd/appfile2compose
+          output: true
+  - id: dukeyos-appmanagement-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+    hooks:
+      post:
+        - cmd: go build -v -tags 'musl netgo osusergo' -o build/sysroot/usr/bin/appfile2compose dukeyos.local/appmanagement/cmd/appfile2compose
+          output: true
+  - id: dukeyos-appmanagement-migration-tool-amd64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=x86_64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: dukeyos-appmanagement-migration-tool-arm64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=aarch64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm64
+  - id: dukeyos-appmanagement-migration-tool-arm-7
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+  - id: dukeyos-appmanagement-migration-tool-riscv64
+    binary: build/sysroot/usr/bin/dukeyos-appmanagement-migration-tool
+    main: ./cmd/migration-tool
+    env:
+      - CC=riscv64-linux-gnu-gcc
+    gcflags:
+      - all=-N -l
+    ldflags:
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags "-static"
+    tags:
+      - musl
+      - netgo
+      - osusergo
+    goos:
+      - linux
+    goarch:
+      - riscv64
+archives:
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-v{{ .Version }}
+    id: dukeyos-appmanagement
+    builds:
+      - dukeyos-appmanagement-amd64
+      - dukeyos-appmanagement-arm64
+      - dukeyos-appmanagement-arm-7
+      - dukeyos-appmanagement-riscv64
+    files:
+      - build/**/*
+  - name_template: >-
+      {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-migration-tool-v{{ .Version }}
+    id: dukeyos-appmanagement-migration-tool
+    builds:
+      - dukeyos-appmanagement-migration-tool-amd64
+      - dukeyos-appmanagement-migration-tool-arm64
+      - dukeyos-appmanagement-migration-tool-arm-7
+      - dukeyos-appmanagement-migration-tool-riscv64
+    files:
+      - build/sysroot/etc/**/*
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  github:
+    owner: IceWhaleTech
+    name: DukeyOS-AppManagement
+  draft: true
+  prerelease: auto
+  mode: replace
+  name_template: "v{{ .Version }}"

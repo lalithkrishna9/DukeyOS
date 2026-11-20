@@ -1,0 +1,13 @@
+[Unit]
+After=network.target
+Description=DukeyOS Gateway
+
+[Service]
+ExecStartPre=/usr/bin/dukeyos-gateway -v
+ExecStart=/usr/bin/dukeyos-gateway -w /usr/share/dukeyos/www
+PIDFile=/var/run/dukeyos/gateway.pid
+Restart=always
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

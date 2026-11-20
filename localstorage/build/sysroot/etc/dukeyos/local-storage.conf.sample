@@ -1,0 +1,13 @@
+[common]
+RuntimePath=/var/run/dukeyos
+
+[app]
+LogPath=/var/log/dukeyos
+LogSaveName=local-storage
+LogFileExt=log
+DBPath=/var/lib/dukeyos/db
+ShellPath=/usr/share/dukeyos/shell
+
+[server]
+USBAutoMount=
+EnableMergerFS=false

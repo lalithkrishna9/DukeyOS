@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 command -v go >/dev/null || { echo "Go 1.21+ is required: https://go.dev/dl/" >&2; exit 1; }
 GOVER=$(go env GOVERSION | sed 's/^go//'); echo "using Go $GOVER"
 mkdir -p dist
+export GOFLAGS=-mod=mod
 export GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 # The generated API/client packages (codegen/) are not committed: every //go:generate line pins its own
 # oapi-codegen version (go run ...@v1.12.4), so nothing needs installing first.

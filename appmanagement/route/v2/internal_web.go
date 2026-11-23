@@ -56,8 +56,9 @@ func (a *AppManagement) GetAppGrid(ctx echo.Context) error {
 		composeApp := (service.ComposeApp)(*app.Compose)
 		containerLists, err := composeApp.Containers(ctx.Request().Context())
 		if err != nil {
+			// one app whose containers can't be listed (e.g. while it is still being created) must not blank the whole grid
 			logger.Error("failed to get containers for compose app", zap.Error(err), zap.String("app", composeApp.Name))
-			return nil
+			continue
 		}
 
 		for _, containcontainerList := range containerLists {
@@ -104,7 +105,7 @@ func (a *AppManagement) GetAppGrid(ctx echo.Context) error {
 	})
 
 	// merge v1 and v2 apps
-	var appGridItems []codegen.WebAppGridItem
+	appGridItems := []codegen.WebAppGridItem{} // not nil: a nil slice is encoded as JSON null, which the dashboard used to read as "engine offline"
 	appGridItems = append(appGridItems, v2AppGridItems...)
 	appGridItems = append(appGridItems, v1AppGridItems...)
 	appGridItems = append(appGridItems, containerAppGridItems...)

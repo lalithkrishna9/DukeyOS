@@ -111,7 +111,7 @@ $("#pw").addEventListener("keydown", async e => {
 });
 
 /* ---------- session handling ---------- */
-function stopHome() { homeActive = false; sockets.forEach(s => s.close()); sockets.clear(); }
+function stopHome() { homeActive = false; sockets.forEach(s => s.close()); sockets.clear(); timers.forEach(clearInterval); timers.clear(); pollId = null; globeRun = false; }
 function sessionExpired() { if (screenId !== "home") return; stopHome(); started = false; loginScreen(false); toast("SESSION ENDED"); }
 $("#logout").onclick = async () => { await api("/api/logout", { method: "POST" }); stopHome(); started = false; loginScreen(false); };
 
@@ -147,7 +147,7 @@ function enterHome(anim) {
   if (started) return; started = true;
   every(() => { const d = new Date(); const c = $("#clock"); c.textContent = d.toTimeString().slice(0, 8); c.classList.add("t"); setTimeout(() => c.classList.remove("t"), 90); }, 1000);
   statsWS(); packetsWS(); every(camPoll, 15000); every(netPoll, 5000); every(procPoll, 3000); every(redraw, 1000);
-  loadApps(); setTimeout(initGlobe, 250);
+  restoreInst(); every(tickInst, 1000); loadApps(); setTimeout(initGlobe, 250);
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && homeActive) { loadApps(); } });
 
@@ -179,7 +179,7 @@ function statsWS() {
     $("#temp").textContent = s.temp == null ? "CPU --°C" : `CPU ${Math.round(s.temp)}°C`;
     $("#traf").textContent = `▼${kb(s.rx)} ▲${kb(s.tx)}`;
     if (s.load != null && s.load !== lastLoad) { lastLoad = s.load; $("#load").textContent = "LOAD " + Number(s.load).toFixed(2); }
-    if (s.disk) { $("#diskv").textContent = `${s.disk.percent.toFixed(0)}% · ${gb(s.disk.free)} FREE`; $("#diskb").style.width = s.disk.percent + "%"; }
+    if (s.disk) { diskFree = s.disk.free; $("#diskv").textContent = `${s.disk.percent.toFixed(0)}% · ${gb(s.disk.free)} FREE`; $("#diskb").style.width = s.disk.percent + "%"; }
   });
 }
 async function procPoll() {
@@ -226,7 +226,9 @@ function packetsWS() {
 
 /* globe: eDEX encom-globe. COSMETIC ONLY - not wired to any real location data. Hyderabad pin, purple→blue grid. */
 const HYD = { lat: 17.385, lon: 78.4867 };
-let globe = null, globeRun = false;
+const GLOBE_BIAS = 0.14;     // radians; shifts Hyderabad slightly right of centre
+const MONO = "JetBrains Mono, Fira Code, Consolas, monospace";
+let globe = null, globeRun = false, globeStarting = false, globeLoopOn = false;
 const lerp = (a, b, t) => a + (b - a) * t;
 function paintGrid(g, tiles) {
   const col = g.hexGrid && g.hexGrid.geometry.attributes.color; if (!col) return;
@@ -238,106 +240,198 @@ function paintGrid(g, tiles) {
   });
   col.needsUpdate = true;
 }
+/* keep the whole sphere inside the panel: in a narrow/portrait panel widen the field of view instead of cropping the globe */
+const fovFor = aspect => aspect >= 1 ? 50 : Math.min(110, 2 * Math.atan(Math.tan(25 * Math.PI / 180) / Math.max(aspect, .3)) * 180 / Math.PI);
+function fitGlobe() {
+  const el = $("#globe"); if (!globe || !el.clientWidth || !el.clientHeight) return;
+  globe.camera.aspect = el.clientWidth / el.clientHeight; globe.camera.fov = fovFor(globe.camera.aspect);
+  globe.camera.updateProjectionMatrix(); globe.renderer.setSize(el.clientWidth, el.clientHeight);
+}
+function globeLoop(ts) {                                           // one loop for the page's lifetime; it drives whichever globe is current
+  requestAnimationFrame(globeLoop);
+  const g = globe;
+  if (!g || !globeRun || document.hidden || !homeActive || ts - globeLoop.last < 1000 / 24) return;
+  globeLoop.last = ts;
+  g.cameraAngle = Math.PI - HYD.lon * Math.PI / 180 + GLOBE_BIAS + Math.sin(ts / 9000) * .06;   // Hyderabad just off-centre (so its pin stands out in profile), slow gentle sway
+  g.viewAngle = HYD.lat * Math.PI / 180 + Math.sin(ts / 13000) * .03;
+  g.tick();
+}
+globeLoop.last = 0;
 async function initGlobe() {
   const el = $("#globe");
+  if (globe) { globeRun = true; fitGlobe(); return; }               // logging out and in again must not build a second globe
+  if (globeStarting) return; globeStarting = true;
   try {
     if (!window.ENCOM || !window.WebGLRenderingContext) throw new Error("no webgl");
-    if (!el.clientWidth || !el.clientHeight) return setTimeout(initGlobe, 400);
-    const geo = await (await fetch("assets/grid.json")).json();
-    const g = new ENCOM.Globe(el.clientWidth, el.clientHeight, { font: "monospace", data: [], tiles: geo.tiles,
+    if (!el.clientWidth || !el.clientHeight) { globeStarting = false; return setTimeout(initGlobe, 400); }
+    const geo = await (await fetch("assets/grid.json?v=2")).json();
+    el.innerHTML = "";
+    const g = new ENCOM.Globe(el.clientWidth, el.clientHeight, { font: MONO, data: [], tiles: geo.tiles,
       baseColor: "#8a5cff", markerColor: "#7aa7ff", pinColor: "#7aa7ff", satelliteColor: "#9b5cff",
-      scale: 1.3, viewAngle: .3, dayLength: 1e12, introLinesDuration: 2500, introLinesColor: "#2f8bff", maxPins: 3, maxMarkers: 3 });
-    el.appendChild(g.domElement); globe = g;
+      scale: 1.3, viewAngle: HYD.lat * Math.PI / 180, dayLength: 1e12, introLinesDuration: 2500, introLinesColor: "#2f8bff", maxPins: 3, maxMarkers: 3 });
+    el.appendChild(g.domElement);
+    g.domElement.addEventListener("webglcontextlost", ev => { ev.preventDefault(); globeRun = false; });
+    g.domElement.addEventListener("webglcontextrestored", () => { globe = null; globeStarting = false; initGlobe(); });   // GPU reset / driver hiccup: rebuild
     g.init("#000000", () => {
       try { paintGrid(g, geo.tiles); } catch (e) { console.warn("grid recolour failed", e); }
-      g.addPin(HYD.lat, HYD.lon, "HYD", 1.25);
-      globeRun = true; let last = 0; const base = Math.PI - HYD.lon * Math.PI / 180;
-      (function loop(ts) {
-        requestAnimationFrame(loop);
-        if (!globeRun || document.hidden || !homeActive || ts - last < 1000 / 24) return;
-        last = ts;
-        g.cameraAngle = base + Math.sin(ts / 9000) * .22;           // slow sway, always facing Hyderabad
-        g.viewAngle = .3 + Math.sin(ts / 13000) * .04;
-        g.tick();
-      })(0);
+      g.addPin(HYD.lat, HYD.lon, "HYD", 1.25, { showSmoke: false, font: MONO, labelColor: "#e8e8e8" });
+      globe = g; fitGlobe(); globeRun = true; globeStarting = false;
+      if (!globeLoopOn) { globeLoopOn = true; requestAnimationFrame(globeLoop); }
     });
-    addEventListener("resize", () => { if (!globe || !el.clientWidth) return; g.camera.aspect = el.clientWidth / el.clientHeight; g.camera.updateProjectionMatrix(); g.renderer.setSize(el.clientWidth, el.clientHeight); });
   } catch (e) {
+    globeStarting = false;
     console.warn("globe unavailable:", e); el.innerHTML = `<div class="empty">GLOBE UNAVAILABLE · WEBGL NOT SUPPORTED</div>`;
   }
 }
+addEventListener("resize", fitGlobe);
 
 /* apps: local dukeyos-appmanagement, reached only through the backend's allow-listed proxy */
 const APPS = "/api/svc/v2/app_management";
 const title = a => (a && a.title && (a.title.en_us || a.title.custom || Object.values(a.title)[0])) || (a && a.name) || "app";
 const init = s => esc(String(s || "?").trim().slice(0, 1).toUpperCase());
-const iconHTML = (a, cls) => a.icon ? `<img src="${esc(a.icon)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;fb&quot;>${init(title(a))}</div>'">` : `<div class="fb">${init(title(a))}</div>`;
+/* NB: no inline onerror="…" here - the strict CSP (script-src 'self') blocks inline handlers, so a broken icon used to stay
+   an empty box. A capture-phase listener (error events don't bubble) swaps in the letter tile instead. */
+const iconHTML = a => a.icon ? `<img src="${esc(a.icon)}" data-fb="${init(title(a))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : `<div class="fb">${init(title(a))}</div>`;
+document.addEventListener("error", e => {
+  const t = e.target; if (!t || t.tagName !== "IMG" || t.dataset.fb == null) return;
+  const d = document.createElement("div"); d.className = "fb"; d.textContent = t.dataset.fb; t.replaceWith(d);
+}, true);
 function appURL(a) {
   if (a.app_type === "v1app" && a.url) return a.url;
   const host = a.hostname || location.hostname, scheme = a.scheme || "http";
   return `${scheme}://${host}${a.port ? ":" + a.port : ""}${a.index || ""}`;
 }
-let appsBusy = new Set();
+async function getJSON(path) {                                     // { ok, status, j }; never throws
+  try { const r = await api(path); let j = null; try { j = await r.json(); } catch {} return { ok: r.ok, status: r.status, j }; }
+  catch { return { ok: false, status: 0, j: null }; }
+}
+
+/* installs run asynchronously inside dukeyos-appmanagement (pull image → create → start) and it reports nothing back over HTTP.
+   So the dashboard tracks them itself: it remembers what it asked for, polls the app grid, and shows the app as soon as it exists.
+   Kept in sessionStorage so a page refresh doesn't forget an install that is still running on the server. */
+const INSTALL_TIMEOUT = 15 * 60 * 1000, REMOVE_TIMEOUT = 90 * 1000;
+const installing = new Map(), removing = new Map(), failed = new Set();
+let appsBusy = new Set(), diskFree = null, gridNames = new Set(), pollId = null;
+const saveInst = () => { try { sessionStorage.setItem("dk_inst", JSON.stringify([...installing].map(([id, v]) => [id, { title: v.title, icon: v.icon, t0: v.t0, snap: v.snap }]))); } catch {} };
+function restoreInst() {
+  try { for (const [id, v] of JSON.parse(sessionStorage.getItem("dk_inst") || "[]")) if (Date.now() - v.t0 < INSTALL_TIMEOUT) installing.set(id, v); } catch {}
+  pollWhileBusy();
+}
+function pollWhileBusy() {
+  if (pollId || !(installing.size || removing.size)) return;
+  pollId = setInterval(() => {
+    if (!installing.size && !removing.size) { clearInterval(pollId); timers.delete(pollId); pollId = null; return; }
+    if (homeActive && !document.hidden) loadApps();
+  }, 3000);
+  timers.add(pollId);
+}
+function tickInst() {                                              // 1 Hz: elapsed counters on tiles + store buttons
+  const now = Date.now();
+  document.querySelectorAll("[data-inst]").forEach(n => { const v = installing.get(n.dataset.inst); if (v) n.textContent = n.tagName === "BUTTON" ? `INSTALLING ${DK.fmtElapsed(now - v.t0)}` : DK.fmtElapsed(now - v.t0); });
+}
+
+let lastItems = [];
 async function loadApps() {
-  const grid = $("#grid"), j = await json(`${APPS}/web/appgrid`);
-  if (!j || !Array.isArray(j.data)) { grid.innerHTML = `<div class="empty">APP ENGINE OFFLINE</div>`; return; }
-  if (!j.data.length) { grid.innerHTML = `<div class="empty">NOTHING INSTALLED · OPEN THE APP STORE</div>`; return; }
+  const grid = $("#grid"), res = await getJSON(`${APPS}/web/appgrid`), items = res.ok ? DK.gridItems(res.j) : null;
+  if (!items) { grid.innerHTML = `<div class="empty">APP ENGINE OFFLINE</div>`; $("#acount").textContent = ""; return; }
+  lastItems = items; gridNames = new Set(items.flatMap(a => [a.name, a.store_app_id].filter(Boolean)));
+  for (const [id, v] of [...installing]) {                         // finished? timed out?
+    if (DK.installDone(items, id, v.title, v.snap, installing.size)) { installing.delete(id); failed.delete(id); installed.add(id); toast(`INSTALLED · ${v.title}`); blip(); }
+    else if (Date.now() - v.t0 > INSTALL_TIMEOUT) { installing.delete(id); failed.add(id); toast(`NO RESPONSE FROM SERVER · ${v.title} · CHECK: journalctl -u dukeyos-appmanagement`); }
+  }
+  for (const [id, t0] of [...removing]) if (!DK.inGrid(items, id) || Date.now() - t0 > REMOVE_TIMEOUT) { removing.delete(id); appsBusy.delete(id); }
+  saveInst(); if ($("#modal").classList.contains("on")) drawStore();
+  const up = items.filter(a => DK.appState(a.status).key === "up").length;
+  $("#acount").textContent = items.length || installing.size ? `${up}/${items.length} RUNNING` : "";
+  if (!items.length && !installing.size) { grid.innerHTML = `<div class="empty">NOTHING INSTALLED · OPEN THE APP STORE</div>`; return; }
   grid.innerHTML = "";
-  for (const a of j.data) {
-    const d = document.createElement("div"), id = a.name; d.className = "app" + (a.status && a.status !== "running" ? " down" : "") + (appsBusy.has(id) ? " busy" : "");
-    d.title = title(a) + (a.status && a.status !== "running" ? " (" + a.status + ")" : "");
-    d.innerHTML = `${iconHTML(a)}<span>${esc(title(a))}</span>${a.app_type === "v2app" ? '<b class="dots" title="actions">⋯</b>' : ""}`;
+  for (const a of items) {
+    const d = document.createElement("div"), id = a.name, st = DK.appState(a.status);
+    d.className = `app ${st.key}` + (appsBusy.has(id) ? " busy" : "");
+    d.title = title(a) + (st.text ? ` (${st.text})` : "");
+    d.innerHTML = `${iconHTML(a)}<i class="st"></i><span>${esc(title(a))}</span>${a.app_type === "v2app" ? '<b class="dots" title="actions">⋯</b>' : ""}`;
     d.onclick = e => { if (e.target.classList.contains("dots")) { e.stopPropagation(); return menu(e, a); } open(appURL(a), "_blank", "noopener"); };
     d.oncontextmenu = e => { if (a.app_type === "v2app") { e.preventDefault(); menu(e, a); } };
     grid.appendChild(d);
   }
+  for (const [id, v] of installing) {                              // installs still in progress
+    const d = document.createElement("div"); d.className = "app inst";
+    d.title = `${v.title} · installing: downloading the image, then starting it. Can take several minutes.`;
+    d.innerHTML = `${iconHTML({ icon: v.icon, title: { en_us: v.title } })}<span>${esc(v.title)}</span><small data-inst="${esc(id)}">${DK.fmtElapsed(Date.now() - v.t0)}</small><b class="dots" title="stop tracking">✕</b>`;
+    d.onclick = e => { if (e.target.classList.contains("dots")) { installing.delete(id); saveInst(); loadApps(); toast(`STOPPED TRACKING · ${v.title}`); } else toast(`INSTALLING · ${v.title} · ${DK.fmtElapsed(Date.now() - v.t0)}`); };
+    grid.appendChild(d);
+  }
 }
 function menu(e, a) {
-  const m = $("#menu"), running = !a.status || a.status === "running";
-  m.innerHTML = [running ? ["stop", "STOP"] : ["start", "START"], ["restart", "RESTART"], ["remove", "UNINSTALL"]].map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("");
-  m.style.left = Math.min(e.clientX, innerWidth - 150) + "px"; m.style.top = Math.min(e.clientY, innerHeight - 110) + "px"; m.classList.add("on");
+  const m = $("#menu"), running = DK.appState(a.status).key === "up";
+  m.innerHTML = [["open", "OPEN"], running ? ["stop", "STOP"] : ["start", "START"], ["restart", "RESTART"], ["remove", "UNINSTALL"]].map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("");
+  m.style.left = Math.min(e.clientX, innerWidth - 150) + "px"; m.style.top = Math.min(e.clientY, innerHeight - 140) + "px"; m.classList.add("on");
   m.onclick = async ev => {
     const k = ev.target.dataset.k; if (!k) return; m.classList.remove("on");
+    if (k === "open") return void open(appURL(a), "_blank", "noopener");
     if (k === "remove" && !confirm(`Uninstall ${title(a)}?\n\nIts container is removed. Its data in /DATA/AppData is kept.`)) return;
     appsBusy.add(a.name); loadApps();
     const r = k === "remove" ? await api(`${APPS}/compose/${encodeURIComponent(a.name)}?delete_config_folder=false`, { method: "DELETE" })
       : await api(`${APPS}/compose/${encodeURIComponent(a.name)}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(k) });
-    appsBusy.delete(a.name); toast(r.ok ? `${k.toUpperCase()} · ${title(a)}` : `FAILED · ${title(a)}`); setTimeout(loadApps, 600);
+    if (r.ok && k === "remove") { removing.set(a.name, Date.now()); pollWhileBusy(); }   // keep the tile "busy" until the container is really gone
+    else appsBusy.delete(a.name);
+    if (!r.ok) { const j = await r.json().catch(() => null); toast(`FAILED · ${title(a)} · ${DK.errorText(j, r.status)}`); }
+    else toast(`${k.toUpperCase()} · ${title(a)}`);
+    setTimeout(loadApps, 600);
   };
 }
 addEventListener("pointerdown", e => { if (!e.target.closest("#menu") && !e.target.classList.contains("dots")) $("#menu").classList.remove("on"); });
 
 /* app store */
-let storeList = [], installed = new Set();
+let storeList = [], installed = new Set(), storeCat = "ALL", storeLimit = 120;
 $("#store").onclick = async () => {
-  $("#modal").classList.add("on"); $("#ssearch").value = ""; const g = $("#sgrid"); g.innerHTML = `<div class="empty">LOADING CATALOG…</div>`;
-  const j = await json(`${APPS}/apps`);
-  if (!j || !j.data || !j.data.list) { g.innerHTML = `<div class="empty">APP STORE UNAVAILABLE · THE SERVER MAY BE OFFLINE</div>`; return; }
+  $("#modal").classList.add("on"); $("#ssearch").value = ""; storeCat = "ALL"; storeLimit = 120; const g = $("#sgrid"); g.innerHTML = `<div class="empty">LOADING CATALOG…</div>`;
+  const res = await getJSON(`${APPS}/apps`), j = res.j;
+  if (!res.ok || !j || !j.data || !j.data.list) { g.innerHTML = `<div class="empty">APP STORE UNAVAILABLE · THE SERVER MAY BE OFFLINE OR STILL SYNCING THE CATALOG</div>`; $("#scats").innerHTML = ""; $("#sinfo").textContent = ""; return; }
   const l = j.data.list; storeList = Object.keys(l).map(k => ({ id: l[k].store_app_id || k, ...l[k] })).sort((a, b) => title(a).localeCompare(title(b)));
   installed = new Set(j.data.installed || []); drawStore(); $("#ssearch").focus();
 };
 function drawStore() {
   const q = $("#ssearch").value.toLowerCase().trim(), g = $("#sgrid");
-  const list = storeList.filter(a => !q || `${title(a)} ${a.category || ""} ${(a.tagline && (a.tagline.en_us || "")) || ""}`.toLowerCase().includes(q)).slice(0, 120);
-  g.innerHTML = ""; if (!list.length) { g.innerHTML = `<div class="empty">NO MATCHES</div>`; return; }
+  const cats = ["ALL", ...[...new Set(storeList.map(a => a.category).filter(Boolean))].sort()];
+  if (!cats.includes(storeCat)) storeCat = "ALL";
+  $("#scats").innerHTML = cats.map(c => `<button data-c="${esc(c)}" class="${c === storeCat ? "on" : ""}">${esc(c.toUpperCase())}</button>`).join("");
+  const all = storeList.filter(a => (storeCat === "ALL" || a.category === storeCat) &&
+    (!q || `${title(a)} ${a.id} ${a.category || ""} ${(a.tagline && (a.tagline.en_us || "")) || ""}`.toLowerCase().includes(q)));
+  const list = all.slice(0, storeLimit);
+  $("#sinfo").textContent = `${list.length} OF ${all.length} APPS` + (installing.size ? ` · ${installing.size} INSTALLING` : "") +
+    (diskFree != null && diskFree < 3e9 ? ` · LOW DISK: ${DK.fmtBytes(diskFree)} FREE` : "");
+  const keep = g.scrollTop; g.innerHTML = "";
+  if (!list.length) { g.innerHTML = `<div class="empty">NO MATCHES</div>`; return; }
   for (const a of list) {
-    const d = document.createElement("div"), have = installed.has(a.id); d.className = "sa";
-    d.innerHTML = `${iconHTML(a)}<span>${esc(title(a))}</span><small>${esc((a.tagline && a.tagline.en_us) || a.category || "")}</small><button ${have ? "disabled" : ""}>${have ? "INSTALLED" : "INSTALL"}</button>`;
-    d.querySelector("button").onclick = ev => install(a, ev.target);
+    const d = document.createElement("div"), have = installed.has(a.id) || gridNames.has(a.id), busy = installing.get(a.id); d.className = "sa";
+    const label = have ? "INSTALLED" : busy ? `INSTALLING ${DK.fmtElapsed(Date.now() - busy.t0)}` : failed.has(a.id) ? "RETRY" : "INSTALL";
+    d.innerHTML = `${iconHTML(a)}<span>${esc(title(a))}</span><small>${esc((a.tagline && a.tagline.en_us) || a.category || "")}</small><button ${have || busy ? "disabled" : ""} ${busy ? `data-inst="${esc(a.id)}"` : ""}>${label}</button>`;
+    d.querySelector("button").onclick = () => install(a);
     g.appendChild(d);
   }
+  if (all.length > list.length) { const m = document.createElement("button"); m.className = "more"; m.textContent = `SHOW MORE (${all.length - list.length})`; m.onclick = () => { storeLimit += 120; drawStore(); }; g.appendChild(m); }
+  g.scrollTop = keep;
 }
-$("#ssearch").oninput = drawStore;
-async function install(a, btn) {
-  btn.disabled = true; btn.textContent = "FETCHING…";
+$("#ssearch").oninput = () => { storeLimit = 120; drawStore(); };
+$("#scats").onclick = e => { const c = e.target.dataset && e.target.dataset.c; if (c) { storeCat = c; storeLimit = 120; drawStore(); } };
+async function install(a) {
+  const id = a.id, name = title(a);
+  if (installing.has(id)) return;
+  if (diskFree != null && diskFree < 2e9) toast(`LOW DISK SPACE · ${DK.fmtBytes(diskFree)} FREE · THE INSTALL MAY FAIL`);
+  installing.set(id, { title: name, icon: a.icon || "", t0: Date.now(), snap: lastItems.map(x => x.name) }); failed.delete(id); saveInst(); drawStore();
+  const fail = (msg) => { installing.delete(id); failed.add(id); saveInst(); drawStore(); loadApps(); toast(`INSTALL FAILED · ${name} · ${msg}`); };
   try {
-    const y = await api(`${APPS}/apps/${encodeURIComponent(a.id)}/compose`, { headers: { Accept: "application/yaml" } });   // the store's compose file
-    if (!y.ok) throw new Error("compose");
+    const g0 = await getJSON(`${APPS}/web/appgrid`), items0 = g0.ok ? DK.gridItems(g0.j) : null;   // fresh snapshot: "what was installed before I clicked"
+    if (items0 && installing.has(id)) { installing.get(id).snap = items0.map(x => x.name); saveInst(); }
+    const y = await api(`${APPS}/apps/${encodeURIComponent(id)}/compose`, { headers: { Accept: "application/yaml" } });   // the store's compose file
+    if (!y.ok) return fail(DK.errorText(await y.json().catch(() => null), y.status, "COULD NOT FETCH THE APP'S COMPOSE FILE"));
     const r = await api(`${APPS}/compose`, { method: "POST", headers: { "Content-Type": "application/yaml" }, body: await y.text() });
-    if (!r.ok) throw new Error("install");
-    blip(); btn.textContent = "INSTALLING…"; installed.add(a.id); toast(`INSTALLING · ${title(a)}`);
-    [4000, 12000, 30000, 60000].forEach(ms => setTimeout(() => homeActive && loadApps(), ms));       // it installs asynchronously
-  } catch { btn.disabled = false; btn.textContent = "RETRY"; toast(`INSTALL FAILED · ${title(a)}`); }
+    if (r.status === 409) { toast(`ALREADY INSTALLING ON THE SERVER · ${name}`); }       // an earlier click is still running there: just keep watching
+    else if (!r.ok) return fail(DK.errorText(await r.json().catch(() => null), r.status));
+    else { blip(); toast(`INSTALLING · ${name} · THIS CAN TAKE A FEW MINUTES`); }
+  } catch { return fail("NETWORK ERROR"); }
+  pollWhileBusy(); loadApps();
 }
 $("#mx").onclick = () => $("#modal").classList.remove("on");
 $("#modal").addEventListener("pointerdown", e => { if (e.target.id === "modal") $("#modal").classList.remove("on"); });

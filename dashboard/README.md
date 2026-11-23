@@ -13,7 +13,7 @@ Python 3.10+ (the server's version).
 
 ## Tests
 
-    pip install pytest && python -m pytest -q tests      # 27 tests: auth, lockout, CSRF, sessions, proxy allow-list, camera, packets, stats
+    pip install pytest && python -m pytest -q tests      # 31 tests: auth, lockout, CSRF, sessions, proxy allow-list, camera, packets, stats, front-end helpers (the helper tests need node and are skipped without it)
     # tests/mock_gateway.py is a stand-in for the gateway + app-management API shapes
 
 ## HTTP surface

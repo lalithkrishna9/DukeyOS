@@ -165,6 +165,25 @@ class Proxy(unittest.TestCase):
         self.c.delete("/api/svc/v2/app_management/compose/paused?delete_config_folder=false", headers=H)
         self.assertEqual(self.mock.state["calls"][-1], ("uninstall", "paused", "false"))
 
+    def test_install_errors_reach_the_browser_intact(self):
+        """The UI shows the engine's own message (ports in use, already installing); the proxy must not swallow it."""
+        h = dict(H, **{"Content-Type": "application/yaml"})
+        try:
+            self.mock.state["install_mode"] = "ports"
+            r = self.c.post("/api/svc/v2/app_management/compose", data="name: demo", headers=h)
+            self.assertEqual(r.status_code, 400)
+            self.assertEqual(r.json["data"]["ports_in_use"]["TCP"], ["8080"])
+            self.mock.state["install_mode"] = "conflict"
+            r = self.c.post("/api/svc/v2/app_management/compose", data="name: demo", headers=h)
+            self.assertEqual(r.status_code, 409)
+            self.assertIn("already being installed", r.json["message"])
+        finally:
+            self.mock.state["install_mode"] = "instant"
+
+    def test_status_strings_match_docker_compose_format(self):
+        grid = self.c.get("/api/svc/v2/app_management/web/appgrid").json["data"]
+        self.assertIn("running(1)", [a["status"] for a in grid])
+
     def test_everything_else_is_blocked(self):
         for p in ("v1/users/status", "v2/app_management/../../v1/users/status",
                   "v2/app_management/%2e%2e/%2e%2e/v1/users/status", "v1/sys/wsssh",
